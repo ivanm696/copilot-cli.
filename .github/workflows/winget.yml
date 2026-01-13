@@ -1,0 +1,48 @@
+name: Submit release to the WinGet community repository
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish-winget:
+    name: Submit to WinGet repository
+
+    # GitHub token permissions needed for winget-create to submit a PR
+    permissions:
+      contents: read
+      pull-requests: write
+
+    # winget-create is only supported on Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Generate release app access token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.COPILOT_CLI_RELEASE_APP_ID }}
+          private-key: ${{ secrets.COPILOT_CLI_RELEASE_APP_PRIVATE_KEY }}
+
+      - name: Submit package using wingetcreate
+        env:
+          WINGET_CREATE_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          # Set the package ID based on the release info
+          $packageId = if (${{ !github.event.release.prerelease }}) { "GitHub.Copilot" } else { "GitHub.Copilot.Prerelease" }
+          
+          # Get installer info from release event
+          $assets = '${{ toJSON(github.event.release.assets) }}' | ConvertFrom-Json
+          $packageVersion = (${{ toJSON(github.event.release.tag_name) }})
+          
+          # Find the download URLs for the x64 and arm64 installers separately
+          # This allows overrides to be used so that wingetcreate does not have to guess the architecture from the filename
+          $installerUrlx64 = $assets | Where-Object -Property name -like '*win32-x64.zip' | Select-Object -ExpandProperty browser_download_url
+          $installerUrlarm64 = $assets | Where-Object -Property name -like '*win32-arm64.zip' | Select-Object -ExpandProperty browser_download_url
+          
+          # Update package using wingetcreate
+          curl.exe -JLO https://aka.ms/wingetcreate/latest
+          .\wingetcreate.exe update $packageId `
+            --version $packageVersion `
+            --urls "$installerUrlx64|x64" "$installerUrlarm64|arm64" `
+            --submit
