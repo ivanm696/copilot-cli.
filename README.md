@@ -2,7 +2,7 @@
 
 # GitHub Copilot CLI (Public Preview)
 
-**The power of GitHub Copilot, now in your terminal.**
+**The power of GitHub Copilot, now in your terminal.**-->See our official documentation for more information.
 
 ![Copilot CLI Splash](https://github.com/user-attachments/assets/51ac25d2-c074-467a-9c88-38a8d76690e3)
 
